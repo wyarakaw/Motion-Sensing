@@ -109,7 +109,7 @@ find_peaks_and_troughs(
 }
 
 /*
- * HOW A STRIDE IS DEFIND FOR OUR ALGORITHM:
+ * HOW A STRIDE IS DEFINED FOR OUR ALGORITHM:
  * We defined a stride as the time it takes for the 9DOF to travel from one trough
  * to another.
  */
@@ -434,21 +434,21 @@ int main(int argc, char **argv)
 	       	n_P_ax, n_T_ax,
 	       	t,
 		accel_x,
-		P_i_ax, P_i_ax);	
+		P_i_ax, T_i_ax);	
 
 	/* Writing to output file for y-acceleartion */
 	write_to_file(fp, ofile_pt_y_name,
 	       	n_P_ay, n_T_ay,
 	       	t,
 		accel_y,
-		P_i_ay, P_i_ay);
+		P_i_ay, T_i_ay);
 
 	/* Writing to output file for z-acceleartion */
 	write_to_file(fp, ofile_pt_z_name,
 		       	n_P_az, n_T_az,
 		       	t,
 			accel_z,
-			P_i_az, P_i_az);
+			P_i_az, T_i_az);
 
 	printf("extract_stride_data completed successfuly. Exiting.\n");
 
