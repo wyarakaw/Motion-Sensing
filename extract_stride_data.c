@@ -108,10 +108,6 @@ find_peaks_and_troughs(
 	return 0;
 }
 
-collect_trough_data(
-		fp,
-		ofile_name
-
 /*
  * HOW A STRIDE IS DEFIND FOR OUR ALGORITHM:
  * We defined a stride as the time it takes for the 9DOF to travel from one trough
@@ -121,10 +117,10 @@ void collect_trough_data(
 		FILE *fp, 		// file we want to output to
 		char *ofile_name,	// name of output file
 		int n_T,		// number of troughs
-		int T_i,		// indexes of troughs
+		int *T_i;	// indexes of troughs
 		)
 {
-	int i, n_T_adjusted;
+	int i, n_T_adjusted, t_index1, t_index2;
 
 	/* 
 	 * We check if we have an odd number of troughs; if this is the case, we ignore the last
@@ -400,131 +396,27 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	/* 
-	 * Insert your algorithm to convert from a series of peak-trough
-	 * indicies, to a series of indicies that indicate the start
-	 * of a stride.
-	 */
 
-	int j, n_T_ax_adjusted, n_T_ay_adjusted, n_T_az_adjusted;	// Additional generic variables
+	printf("TROUGH DATA FOR X ACCELERATION:\n");
+	collect_trough_data(
+		fp,
+		ofile_sx_name,
+		n_T_ax,
+		T_i_ax);
 
-	// These index values will be used to traverse through T_i and
-	// P_i respectively
-	int t_index1, t_index2;
+	printf("TROUGH DATA FOR Y ACCELERATION:\n");
+	collect_trough_data(
+		fp,
+		ofile_sy_name,
+		n_T_ay,
+		T_i_ay);
 
-	/*
-	 * HOW A STRIDE IS DEFIND FOR OUR ALGORITHM:
-	 * We defined a stride as the time it takes for the 9DOF to travel from one trough
-	 * to another.
-	 */
-
-	/*
-	 * We check if we have an odd number of troughs; if this is the case, we ignore the last
-	 * trough when calculating the time for strides. Notice also that with an even number of 
-	 * troughs, we will have an odd number of sampled stride times (e.g. 10 troughs mean 9 
-	 * trough to trough values). If we have an odd number of troughs, we ignore the last
-	 * trough from our calculation of stride times.
-	 */
-
-	//////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////     X ACCLERATION DATA     /////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////
-	
-	if (n_T_ax % 2 == 1)
-		n_T_ax_adjusted = n_T_ax - 2;
-	else
-		n_T_ax_adjusted = n_T_ax - 1;
-
-	printf("n_T_ax = %d, n_T_ax_adjusted = %d\n", n_T_ax, n_T_ax_adjusted);
-
-	float x_accel_strides_t[n_T_ax_adjusted];
-
-	for (i = 0; i < n_T_ax_adjusted; i++){
-		t_index1 = (int) T_i_ax[i];
-		t_index2 = (int) T_i_ax[i+1];
-
-		//printf("t_index1: t[%d] = %20.10lf\n", t_index_accel1, t[t_index_accel1]);
-		//printf("t_index2: t[%d] = %20.10lf\n", t_index_accel2, t[t_index_accel2]);
-
-		x_accel_strides_t[i] = t[t_index2] - t[t_index1];
-	}
-
-	printf("\n\nDATA FOR X %s DATA SHEET:\n", ifile_name);
-	printf("Number of troughs in data sheet: = %d\n", n_T_ax_adjusted);
-	for (i = 0; i < n_T_ax_adjusted; i++){
-		
-		printf("Time between trough %d and trough %d: %20.10lf\n", i+1, i+2, x_accel_strides_t[i]);
-		//printf("x_accel_strides_t[%d] = %20.10lf\n", i, x_accel_strides_t[i]);
-	}
-	printf("\n\n");
-
-
-	//////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////     Y ACCLERATION DATA     /////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////
-	
-
-	if (n_T_ay % 2 == 1)
-		n_T_ay_adjusted = n_T_ay - 2;
-	else
-		n_T_ay_adjusted = n_T_ay - 1;
-
-	printf("n_T = %d, n_T_adjusted = %d\n", n_T_ay, n_T_adjusted);
-
-	float y_accel_strides_t[n_T_ay_adjusted];
-
-	for (i = 0; i < n_T_ay_adjusted; i++){
-		t_index1 = (int) T_i_ay[i];
-		t_index2 = (int) T_i_ay[i+1];
-
-		//printf("t_index1: t[%d] = %20.10lf\n", t_index_accel1, t[t_index_accel1]);
-		//printf("t_index2: t[%d] = %20.10lf\n", t_index_accel2, t[t_index_accel2]);
-
-		y_accel_strides_t[i] = t[t_index2] - t[t_index1];
-	}
-
-	printf("\n\nDATA FOR X %s DATA SHEET:\n", ifile_name);
-	printf("Number of troughs in data sheet: = %d\n", n_T_ay_adjusted);
-	for (i = 0; i < n_T_ay_adjusted; i++){
-		
-		printf("Time between trough %d and trough %d: %20.10lf\n", i+1, i+2, y_accel_strides_t[i]);
-		//printf("x_accel_strides_t[%d] = %20.10lf\n", i, x_accel_strides_t[i]);
-	}
-	printf("\n\n");
-
-	//////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////     Z ACCLERATION DATA     /////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////
-	
-
-	if (n_T_az % 2 == 1)
-		n_T_az_adjusted = n_T_ax - 2;
-	else
-		n_T_az_adjusted = n_T_ax - 1;
-
-	printf("n_T = %d, n_T_adjusted = %d\n", n_T_az, n_T_az_adjusted);
-
-	float z_accel_strides_t[n_T_az_adjusted];
-
-	for (i = 0; i < n_T_adjusted; i++){
-		t_index1 = (int) T_i_az[i];
-		t_index2 = (int) T_i_az[i+1];
-
-		//printf("t_index1: t[%d] = %20.10lf\n", t_index_accel1, t[t_index_accel1]);
-		//printf("t_index2: t[%d] = %20.10lf\n", t_index_accel2, t[t_index_accel2]);
-
-		z_accel_strides_t[i] = t[t_index2] - t[t_index1];
-	}
-
-	printf("\n\nDATA FOR X %s DATA SHEET:\n", ifile_name);
-	printf("Number of troughs in data sheet: = %d\n", n_T_az_adjusted);
-	for (i = 0; i < n_T_az_adjusted; i++){
-		
-		printf("Time between trough %d and trough %d: %20.10lf\n", i+1, i+2, z_accel_strides_t[i]);
-		//printf("x_accel_strides_t[%d] = %20.10lf\n", i, x_accel_strides_t[i]);
-	}
-	printf("\n\n");
-
+	printf("TROUGH DATA FOR Z ACCELERATION:\n");
+	collect_trough_data(
+		fp,
+		ofile_sz_name,
+		n_T_az,
+		T_i_az);
 
 
 	/* Writing to output file for x-acceleartion */
