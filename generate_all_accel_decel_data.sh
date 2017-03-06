@@ -12,15 +12,51 @@ make clean
 make
 
 echo ""
-echo ">>>>EXECUTING extract_stride_data ON ACCELERATION DATASET<<<<"
+echo ">>>>EXECUTING extract_stride_data ON 40s ACCELERATION DATASET<<<<"
 ./extract_stride_data \
-	Acceleration_Walk_Dataset.csv \
-	acceleration_x_output.csv \
-	acceleration_y_output.csv \
-	acceleration_z_output.csv \
-	acceleration_x_strides.csv \
-	acceleration_y_strides.csv \
-	acceleration_z_strides.csv \
+	walk_speed_1_40s_29m_1.csv \
+	accel_x_40s_29m.csv \
+	accel_y_40s_29m.csv \
+	accel_z_40s_29m.csv \
+	accel_xs_40s_29m.csv \
+	accel_xs_40s_29m.csv \
+	accel_xs_40s_29m.csv \
+	$threshold
+
+echo ""
+echo ">>>>EXECUTING extract_stride_data ON 30s ACCELERATION DATASET<<<<"
+./extract_stride_data \
+	walk_speed_1_30s_29m_1.csv \
+	accel_x_30s_29m.csv \
+	accel_y_30s_29m.csv \
+	accel_z_30s_29m.csv \
+	accel_xs_30s_29m.csv \
+	accel_xs_30s_29m.csv \
+	accel_xs_30s_29m.csv \
+	$threshold
+
+echo ""
+echo ">>>>EXECUTING extract_stride_data ON 20s ACCELERATION DATASET<<<<"
+./extract_stride_data \
+	walk_speed_1_20s_29m_1.csv \
+	accel_x_20s_29m.csv \
+	accel_y_20s_29m.csv \
+	accel_z_20s_29m.csv \
+	accel_xs_20s_29m.csv \
+	accel_xs_20s_29m.csv \
+	accel_xs_20s_29m.csv \
+	$threshold
+
+echo ""
+echo ">>>>EXECUTING extract_stride_data ON 10s ACCELERATION DATASET<<<<"
+./extract_stride_data \
+	walk_speed_1_10s_29m_1.csv \
+	accel_x_10s_29m.csv \
+	accel_y_10s_29m.csv \
+	accel_z_10s_29m.csv \
+	accel_xs_10s_29m.csv \
+	accel_xs_10s_29m.csv \
+	accel_xs_10s_29m.csv \
 	$threshold
 
 echo ""
