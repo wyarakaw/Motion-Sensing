@@ -116,8 +116,9 @@ find_peaks_and_troughs(
 void collect_trough_data(
 		FILE *fp, 		// file we want to output to
 		char *ofile_name,	// name of output file
+		float *t,		// buffer for times
 		int n_T,		// number of troughs
-		int *T_i;	// indexes of troughs
+		float *T_i		// indexes of troughs
 		)
 {
 	int i, n_T_adjusted, t_index1, t_index2;
@@ -163,12 +164,12 @@ void collect_trough_data(
 	for (i = 0; i < n_T_adjusted; i++){
 		
 		printf("Time between trough %d and trough %d: %20.10lf\n", i+1, i+2, accel_strides_t[i]);
-		fprintf(fp, "%20.10lf\n", accel_strides[t]);
+		fprintf(fp, "%20.10lf\n", accel_strides_t[i]);
 		//printf("x_accel_strides_t[%d] = %20.10lf\n", i, x_accel_strides_t[i]);
 	}
 
 	fclose(fp);
-	printf("\n\n");
+	printf("\n");
 }
 
 void write_to_file(
@@ -261,7 +262,9 @@ int main(int argc, char **argv)
 	 * Or 
 	 * ./extract_stride_data
 	 */
-	if (argc != 9) {
+	
+	/*if (argc != 9)
+       	{
 		ifile_name = (char *) malloc(sizeof(char) * BUFF_SIZE);
 		memset(ifile_name, 0, BUFF_SIZE);
 		snprintf(ifile_name, 
@@ -275,18 +278,18 @@ int main(int argc, char **argv)
 		memset(ofile_st_name, 0, BUFF_SIZE);
 		snprintf(ofile_st_name, BUFF_SIZE, "acceleration_strides.csv");
 		pk_threshold = 6.7;
-	} else {
-		ifile_name = argv[1];
-		ofile_pt_x_name = argv[2];
-		ofile_pt_y_name = argv[3];
-		ofile_pt_z_name = argv[4];
-		ofile_sx_name = argv[5];
-		ofile_sy_name = argv[6];
-		ofile_sz_name = argv[7];
-		pk_threshold = atof(argv[8]);
-	}
+	}*/ 
 
-	printf("Arguments used:\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%f\n",
+	ifile_name = argv[1];
+	ofile_pt_x_name = argv[2];
+	ofile_pt_y_name = argv[3];
+	ofile_pt_z_name = argv[4];
+	ofile_sx_name = argv[5];
+	ofile_sy_name = argv[6];
+	ofile_sz_name = argv[7];
+	pk_threshold = atof(argv[8]);
+
+	printf("Arguments used:\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%f\n\n",
 			"ifile_name", ifile_name,
 			"ofile_pt_x_name", ofile_pt_x_name,
 			"ofile_pt_y_name", ofile_pt_y_name,
@@ -298,7 +301,7 @@ int main(int argc, char **argv)
 	      );
 
 	/* open the input file */
-	printf("Attempting to read from file \'%s\'.\n", ifile_name);
+	printf("Attempting to read from file \'%s\'.\n\n", ifile_name);
 	fp = fopen(ifile_name, "r");
 	if (fp == NULL) {
 		fprintf(stderr, 
@@ -331,12 +334,16 @@ int main(int argc, char **argv)
 	gyro_y = (float *) malloc(sizeof(float) * N_SAMPLES);
 	gyro_z = (float *) malloc(sizeof(float) * N_SAMPLES);
 
+	printf("REACHES HERE\n");
 	while ((read = getline(&line, &len, fp)) != -1) {
 		/* parse the data */
-		rv1 = sscanf(line, "%f,%f,%f,%f\n", 
-				&t[i], &t_start_epoch[i], &t_end_epoch[i],
+		rv1 = sscanf(line, "%f,%f,%f,%f,%f,%f,%f,%f,%f\n", 
+				&t[i],
+			        &t_start_epoch[i],
+			       	&t_end_epoch[i],
 			       	&accel_x[i], &accel_y[i], &accel_z[i],
-		   		&gyro_x[i], &gyro_y[i], &gyro_z[i]);
+		   		&gyro_x[i], &gyro_y[i], &gyro_z[i]);	
+
 		if (rv1 != 9) {
 			fprintf(stderr,
 					"%s %d \'%s\'. %s.\n",
@@ -357,13 +364,13 @@ int main(int argc, char **argv)
 	 * find indicies of troughs
 	 */
 	P_i_ax = (float *) malloc(sizeof(float) * N_SAMPLES);
-	P_i_ax = (float *) malloc(sizeof(float) * N_SAMPLES);
+	P_i_ay = (float *) malloc(sizeof(float) * N_SAMPLES);
 	P_i_az = (float *) malloc(sizeof(float) * N_SAMPLES);
 
 	T_i_ax = (float *) malloc(sizeof(float) * N_SAMPLES);
 	T_i_ay = (float *) malloc(sizeof(float) * N_SAMPLES);
 	T_i_az = (float *) malloc(sizeof(float) * N_SAMPLES);
-
+	
 	rv1 = find_peaks_and_troughs(
 			accel_x, 
 			N_SAMPLES, 
@@ -371,14 +378,14 @@ int main(int argc, char **argv)
 			P_i_ax, T_i_ax, 
 			&n_P_ax, &n_T_ax);
 
-	rv1 = find_peaks_and_troughs(
+	rv2 = find_peaks_and_troughs(
 			accel_y, 
 			N_SAMPLES, 
 			pk_threshold, 
 			P_i_ay, T_i_ay, 
 			&n_P_ay, &n_T_ay);
 
-	rv1 = find_peaks_and_troughs(
+	rv3 = find_peaks_and_troughs(
 			accel_z, 
 			N_SAMPLES, 
 			pk_threshold, 
@@ -401,6 +408,7 @@ int main(int argc, char **argv)
 	collect_trough_data(
 		fp,
 		ofile_sx_name,
+		t,
 		n_T_ax,
 		T_i_ax);
 
@@ -408,6 +416,7 @@ int main(int argc, char **argv)
 	collect_trough_data(
 		fp,
 		ofile_sy_name,
+		t,
 		n_T_ay,
 		T_i_ay);
 
@@ -415,6 +424,7 @@ int main(int argc, char **argv)
 	collect_trough_data(
 		fp,
 		ofile_sz_name,
+		t,
 		n_T_az,
 		T_i_az);
 
