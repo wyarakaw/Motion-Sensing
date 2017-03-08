@@ -170,13 +170,13 @@ void populate_pts(pts *neural_pts, char *ifile_name){
 	neural_pts->stride = stride;
 	fclose(fp);
 
-	for (i=0; i<neural_pts->size; i++){
+	/*for (i=0; i<neural_pts->size; i++){
 		printf("neural_pts.peak[%d] = %f\nneural_pts.trough[%d] = %f\nneural_pts.stride[%d] = %f\n",
 				i, neural_pts->peak[i],
 				i, neural_pts->trough[i],
 				i, neural_pts->stride[i]
 		      );
-	}
+	}*/
 
 }
 
@@ -307,7 +307,7 @@ void create_training_file(
 {
 	int i, 			
 	    p_idx, t_idx, 	// holds indexes to peaks and troughs
-	    t_time1, t_time2,		// to help calculate stride times
+	    t_time1, t_time2,	// to help calculate stride times
 	    num_paired_pt,	// each peak should be paired with a trough
 	    n_T_adjusted;	// should have an even number of troughs
 	
@@ -414,8 +414,6 @@ void test_neural_network(pts neural_pts){
 
         for (j = 0; j < 4; j++) {
 	
-		printf("calc_out[%d] = %f\n", i, calc_out[j]);
-		
             if (calc_out[j] > max) {
                 max = calc_out[j];
                 speed = j;
@@ -492,7 +490,7 @@ int main(int argc, char **argv)
 	ofile_training = argv[11];
 
 
-/*	printf("Arguments used:\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%f\n\n",
+	printf("Arguments used:\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%d\n\t%s=%s\n\t%s=%f\n\t%s=%s\n\n",
 			"ifile_name", ifile_name,
 			"ofile_pt_x_name", ofile_pt_x_name,
 			"ofile_pt_y_name", ofile_pt_y_name,
@@ -504,7 +502,7 @@ int main(int argc, char **argv)
 			"ofile_tf_name", ofile_tf_name,
 			"peak_threshold", pk_threshold,
 			"ofile_training", ofile_training
-	      );*/
+	      );
 
 	/* open the input file */
 	printf("Attempting to read from file \'%s\'.\n\n", ifile_name);
@@ -575,14 +573,14 @@ int main(int argc, char **argv)
 	T_i_ax = (float *) malloc(sizeof(float) * N_SAMPLES);
 	T_i_ay = (float *) malloc(sizeof(float) * N_SAMPLES);
 	T_i_az = (float *) malloc(sizeof(float) * N_SAMPLES);
-printf("REACHES HERE FIRST\n");	
+	
 	rv1 = find_peaks_and_troughs(
 			accel_x, 
 			N_SAMPLES, 
 			pk_threshold, 
 			P_i_ax, T_i_ax, 
 			&n_P_ax, &n_T_ax);
-printf("DOES IT\n");
+
 	rv2 = find_peaks_and_troughs(
 			accel_y, 
 			N_SAMPLES, 
@@ -590,7 +588,6 @@ printf("DOES IT\n");
 			P_i_ay, T_i_ay, 
 			&n_P_ay, &n_T_ay);
 
-printf("DOES I2T\n");
 	rv3 = find_peaks_and_troughs(
 			accel_z, 
 			N_SAMPLES, 
@@ -635,21 +632,21 @@ printf("DOES I2T\n");
 		T_i_az);
 
 
-	/* Writing to output file for x-acceleartion */
+	/* Writing to output file for x-acceleration */
 	write_to_file(fp, ofile_pt_x_name,
 	       	n_P_ax, n_T_ax,
 	       	t,
 		accel_x,
 		P_i_ax, T_i_ax);	
 
-	/* Writing to output file for y-acceleartion */
+	/* Writing to output file for y-acceleration */
 	write_to_file(fp, ofile_pt_y_name,
 	       	n_P_ay, n_T_ay,
 	       	t,
 		accel_y,
 		P_i_ay, T_i_ay);
 
-	/* Writing to output file for z-acceleartion */
+	/* Writing to output file for z-acceleration */
 	write_to_file(fp, ofile_pt_z_name,
 		       	n_P_az, n_T_az,
 		       	t,
@@ -668,10 +665,8 @@ printf("DOES I2T\n");
 			&neural_pts);
 
 	
-	//void populate_pts(pts *neural_pts, char *ifile_name){
 	pts real_neural_pts;
 	populate_pts(&real_neural_pts, ofile_training);
-	printf("real_neural_pts->size = %d\n", real_neural_pts.size);
 
 	test_neural_network(real_neural_pts);
 
