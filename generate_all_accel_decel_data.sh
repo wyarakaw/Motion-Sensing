@@ -16,6 +16,9 @@ t30s=3;
 t20s=2;
 t10s=1;
 
+NUM_INPUT_NEURONS=3;
+NUM_OUTPUT_NEURONS=4;
+
 echo ""
 echo ">>>>EXECUTING extract_stride_data ON 40s ACCELERATION DATASET<<<<"
 ./extract_stride_data \
@@ -26,11 +29,10 @@ echo ">>>>EXECUTING extract_stride_data ON 40s ACCELERATION DATASET<<<<"
 	accel_xs_40s_29m.csv \
 	accel_ys_40s_29m.csv \
 	accel_zs_40s_29m.csv \
+	$threshold \
 	$t40s \
 	training_40s.txt \
-	$threshold \
-	training2.txt
-	
+	testing_40s.txt
 
 echo ""
 echo ">>>>EXECUTING extract_stride_data ON 30s ACCELERATION DATASET<<<<"
@@ -42,10 +44,10 @@ echo ">>>>EXECUTING extract_stride_data ON 30s ACCELERATION DATASET<<<<"
 	accel_xs_30s_29m.csv \
 	accel_ys_30s_29m.csv \
 	accel_zs_30s_29m.csv \
+	$threshold \
 	$t30s \
 	training_30s.txt \
-	$threshold \
-	training2.txt
+	testing_30s.txt
 
 echo ""
 echo ">>>>EXECUTING extract_stride_data ON 20s ACCELERATION DATASET<<<<"
@@ -57,10 +59,10 @@ echo ">>>>EXECUTING extract_stride_data ON 20s ACCELERATION DATASET<<<<"
 	accel_xs_20s_29m.csv \
 	accel_ys_20s_29m.csv \
 	accel_zs_20s_29m.csv \
+	$threshold \
 	$t20s \
 	training_20s.txt \
-	$threshold \
-	training2.txt
+	testing_20s.txt
 
 echo ""
 echo ">>>>EXECUTING extract_stride_data ON 10s ACCELERATION DATASET<<<<"
@@ -72,14 +74,25 @@ echo ">>>>EXECUTING extract_stride_data ON 10s ACCELERATION DATASET<<<<"
 	accel_xs_10s_29m.csv \
 	accel_ys_10s_29m.csv \
 	accel_zs_10s_29m.csv \
+	$threshold \
 	$t10s \
 	training_10s.txt \
-	$threshold \
-	training2.txt
+	testing_10s.txt
 
 echo ""
-echo "Lines in x accel and decel output.csv"
-wc -l acceleration_x_output.csv
-wc -l acceleration_y_output.csv
-wc -l acceleration_z_output.csv
+echo ">>>>COMBINING TRAINING AND TESTING FILES<<<<"
+cat training_10s.txt training_20s.txt training_30s.txt training_40s.txt > training_t.txt
+temp=$(expr "$(wc -l < training_t.txt)" / 2)
+echo $temp $NUM_INPUT_NEURONS $NUM_OUTPUT_NEURONS > header.txt
+cat header.txt training_t.txt >> training.txt
+rm training_t.txt header.txt
+cat testing_10s.txt testing_20s.txt testing_30s.txt testing_40s.txt >> testing.txt
 
+echo ""
+echo ">>>TRAINING THE NEURAL NETWORK<<<<"
+./train_neural_net
+
+echo ""
+echo ">>>TESTING THE NEURAL NETWORK<<<<"
+./test_neural_network \
+	testing.txt
