@@ -1,7 +1,6 @@
 #ifndef EXTRACT_STRIDE_DATA_H_ 
 #define EXTRACT_STRIDE_DATA_H_
 
-
 /*
  * This data structure will hold three arrays, with the ith index corresponding to a set of
  * peak time, trough time, and stride time. This information will be enterd to test the neural
@@ -59,8 +58,13 @@ void write_to_file(
 		float *P_i, float *T_i		// buffer for peak and trough indexes
 		);
 
-/* Create training file */
-void create_training_file(
+/* 
+ * Used to create our training file and testing file, and also to populate our pts class.
+ * To choose between training or testing file:
+ * 	test_flag = 0 --> Create training file
+ *	test_flag = 1 --> Create testing file
+ */
+void create_t_file(
 		FILE *fp, char *ofile_name,	// file we want to output to
 		int n_P, int n_T, 		// number of peaks and troughs
 		float *t, 			// buffer for times
@@ -70,9 +74,6 @@ void create_training_file(
 		int test_flag,			// for creating test files for neural network
 		pts *neural_pts			// to hold our pts values
 		);
-
-/* Tests our buffer with peaks, troughs, and strides with the neural network */
-void test_neural_network(pts neural_pts);
 
 
 

@@ -11,8 +11,8 @@
 #include "fann.h"
 #include "extract_stride_data.h"
 
-
 #define BUFF_SIZE 1024
+#define NORM_CONSTANT 10
 
 /*
  * sets first <n> values in <*arr> to <val>
@@ -113,72 +113,6 @@ find_peaks_and_troughs(
 	return 0;
 }
 
-void populate_pts(pts *neural_pts, char *ifile_name){
-
-	FILE *fp;
-	char *line = NULL;
-	size_t len = 0;
-	ssize_t read;
-	int i, N_SAMPLES, rv1;
-	float *peak, *trough, *stride;
-
-	printf("Attempting to read from file \'%s\'.\n\n", ifile_name);
-	fp = fopen(ifile_name, "r");
-	if (fp == NULL) {
-		fprintf(stderr, 
-				"Failed to read from file \'%s\'.\n", 
-				ifile_name
-		       );
-		exit(EXIT_FAILURE);
-	}
-
-	/* count the number of lines in the file */
-	N_SAMPLES = 0;
-	while ((read = getline(&line, &len, fp)) != -1) {
-		N_SAMPLES++;
-	}
-	
-	neural_pts->size = N_SAMPLES;
-	/* go back to the start of the file so that the data can be read */
-	rewind(fp);
-
-	/* start reading the data from the file into the data structures */
-	i = 0;
-	peak = (float *) malloc(sizeof(float) * N_SAMPLES);
-	trough = (float *) malloc(sizeof(float) * N_SAMPLES);
-	stride = (float *) malloc(sizeof(float) * N_SAMPLES);
-
-	while ((read = getline(&line, &len, fp)) != -1) {
-		/* parse the data */
-		rv1 = sscanf(line, "%f\t%f\t%f\n", 
-				&peak[i],
-			        &trough[i],
-			       	&stride[i]
-			);
-
-		if (rv1 != 3) {
-			fprintf(stderr,
-					"Failed to read line. Exiting\n"
-			       );
-			exit(EXIT_FAILURE);
-		}
-		i++;
-	}
-
-	neural_pts->peak = peak;
-	neural_pts->trough = trough;
-	neural_pts->stride = stride;
-	fclose(fp);
-
-	/*for (i=0; i<neural_pts->size; i++){
-		printf("neural_pts.peak[%d] = %f\nneural_pts.trough[%d] = %f\nneural_pts.stride[%d] = %f\n",
-				i, neural_pts->peak[i],
-				i, neural_pts->trough[i],
-				i, neural_pts->stride[i]
-		      );
-	}*/
-
-}
 
 /*
  * HOW A STRIDE IS DEFINED FOR OUR ALGORITHM:
@@ -294,29 +228,25 @@ void write_to_file(
 	fclose(fp);
 }
 
-void create_training_file(
+void create_t_file(
 		FILE *fp, char *ofile_name,	// file we want to output to
 		int n_P, int n_T, 		// number of peaks and troughs
 		float *t, 			// buffer for times
 		float *accel,			// buffer for acceleartions
 		float *P_i, float *T_i,		// buffer for peak and trough indexes
 		int speed_file,			// for +1 and -1 outputs
-		int test_flag,			// for creating test (NOT training) files for neural network
+		int test_flag,			// 0 for training file, 1 for testing file
 		pts *neural_pts			// to hold our pts values
 		)
 {
 	int i, 			
 	    p_idx, t_idx, 	// holds indexes to peaks and troughs
 	    t_time1, t_time2,	// to help calculate stride times
-	    num_paired_pt,	// each peak should be paired with a trough
+	    NUM_SAMPLES,	// each peak should be paired with a trough
 	    n_T_adjusted;	// should have an even number of troughs
-	
-	int outputs[4];		// +1 for correct speed, -1 for incorrect speed
-	for (i = 0; i < 4; i++){
-		outputs[i] = -1;
-	}
-	outputs[speed_file - 1] = 1;
 
+	int outputs[4];		// our output neurons; +1 for correct speed, -1 for incorrect speed
+	
 	/* open the output file to write the peak and trough data */
 	printf("Attempting to write to file \'%s\'.\n", ofile_name);
 	fp = fopen(ofile_name, "w");
@@ -327,6 +257,11 @@ void create_training_file(
 		       );
 		exit(EXIT_FAILURE);
 	}
+
+	for (i = 0; i < 4; i++){
+		outputs[i] = -1;
+	}
+	outputs[speed_file - 1] = 1;
 
 	if (n_T % 2 == 1)
 		n_T_adjusted = n_T - 2;
@@ -342,37 +277,53 @@ void create_training_file(
 	}
 
 	if (n_P < n_T)
-		num_paired_pt = n_P;
+		NUM_SAMPLES = n_P;
 	else
-		num_paired_pt = n_T;
+		NUM_SAMPLES = n_T;
 
-	/* Initialize our pts struct as defined earlier */
-	float peak_array[num_paired_pt];
-	float trough_array[num_paired_pt];
-	float stride_array[num_paired_pt];
-	neural_pts->peak = peak_array;
-	neural_pts->trough = trough_array;
-	neural_pts->stride = stride_array;
-	neural_pts->size = num_paired_pt;
+	float peak_array[NUM_SAMPLES];
+	float trough_array[NUM_SAMPLES];
+	float stride_array[NUM_SAMPLES];
 
+	if (test_flag == 0){
+		for (i = 0; i < 4; i++){
+			outputs[i] = -1;
+		}
+		outputs[speed_file - 1] = 1;
+
+		/* Initialize our pts struct as defined earlier */
+		neural_pts->peak = peak_array;
+		neural_pts->trough = trough_array;
+		neural_pts->stride = stride_array;
+		neural_pts->size = NUM_SAMPLES;
+	}
 
 	/* We start at i = 1 because we defined strides as trough-to-trough. */
-	for (i = 1; i < num_paired_pt; i++) {
+	for (i = 1; i < NUM_SAMPLES; i++) {
 		p_idx = (int) P_i[i];
 		t_idx = (int) T_i[i];
 
+		/*
+		 * Filter out irregular data samples (i.e. incorrect normalization values).
+		 * Once irregular data is found, continue to next iteration. 
+		 * */
+		if (abs(accel[p_idx]/NORM_CONSTANT) >= 1 ||
+				abs(accel[t_idx]/NORM_CONSTANT) >= 1 ||
+				abs(accel_strides_t[i-1]/NORM_CONSTANT >= 1))
+			continue;
+		
 		/* Divide each value by 10 for normalization purposes (between -1 and 1) */
 		fprintf(fp, "%f\t%f\t%f\n",
-				accel[p_idx]/10,
-				accel[t_idx]/10,
-				accel_strides_t[i-1]/10
+				accel[p_idx]/NORM_CONSTANT,
+				accel[t_idx]/NORM_CONSTANT,
+				accel_strides_t[i-1]/NORM_CONSTANT
 		       );
 
-		neural_pts->peak[i-1] = accel[p_idx]/10;
-		neural_pts->trough[i-1] = accel[t_idx]/10;
-		neural_pts->stride[i-1] = accel_strides_t[i-1]/10;
-		
 		if (test_flag == 0){
+			neural_pts->peak[i-1] = accel[p_idx]/NORM_CONSTANT;
+			neural_pts->trough[i-1] = accel[t_idx]/NORM_CONSTANT;
+			neural_pts->stride[i-1] = accel_strides_t[i-1]/NORM_CONSTANT;
+
 			fprintf(fp, "%d\t%d\t%d\t%d\n",
 					outputs[0],
 					outputs[1],
@@ -391,40 +342,6 @@ void create_training_file(
 	fclose(fp);
 }
 
-void test_neural_network(pts neural_pts){
-
-    int i, j, speed;
-    float max;
-    fann_type *calc_out;
-    fann_type input[3];
-    struct fann *ann;
-    
-    ann = fann_create_from_file("TRAINING.net");
-
-    for (i=0; i < neural_pts.size; i++) {
-	max = -100;
-	    
-        input[0] = (float) neural_pts.peak[i];
-        input[1] = (float) neural_pts.trough[i];
-        input[2] = (float) neural_pts.stride[i];
-
-	// calc_out returns an array of outputs, the number of whichbeing equal to number of neurons
-	// in output layer
-        calc_out = fann_run(ann, input);
-
-        for (j = 0; j < 4; j++) {
-	
-            if (calc_out[j] > max) {
-                max = calc_out[j];
-                speed = j;
-            }
-
-        }
-	
-		
-	printf("Peak, trough, and stride time values:: %f, %f, %f -> walking speed is %d\n", neural_pts.peak[i], neural_pts.trough[i], neural_pts.stride[i], speed);
-	}
-}
 
 int main(int argc, char **argv)
 {
@@ -433,15 +350,16 @@ int main(int argc, char **argv)
 	int rv1, rv2, rv3;
 	/* Variables for reading file line by line */
 	char *ifile_name, *ofile_pt_x_name, *ofile_pt_y_name, *ofile_pt_z_name,
-	     *ofile_sx_name, *ofile_sy_name, *ofile_sz_name, *ofile_tf_name,
-	     *ofile_training;
+	     *ofile_sx_name, *ofile_sy_name, *ofile_sz_name, *ofile_training,
+	     *ofile_testing;
 	FILE *fp;
 	char *line = NULL;
 	size_t len = 0;
 	ssize_t read;
 	int N_SAMPLES;
 
-	/* Correlates to which speed file we are analyzing, i.e.
+	/* 
+	 * Correlates to which speed file we are analyzing, i.e.
 	 * speed_file = 1 for 10s
 	 * speed_file = 2 for 20s
 	 * speed_file = 3 for 30s
@@ -484,13 +402,12 @@ int main(int argc, char **argv)
 	ofile_sx_name = argv[5];
 	ofile_sy_name = argv[6];
 	ofile_sz_name = argv[7];
-	speed_file = atoi(argv[8]);
-	ofile_tf_name = argv[9];
-	pk_threshold = atof(argv[10]);
-	ofile_training = argv[11];
+	pk_threshold = atof(argv[8]);
+	speed_file = atoi(argv[9]);
+	ofile_training = argv[10];
+	ofile_testing = argv[11];
 
-
-	printf("Arguments used:\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%d\n\t%s=%s\n\t%s=%f\n\t%s=%s\n\n",
+	printf("Arguments used:\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%s\n\t%s=%f\n\t%s=%d\n\t%s=%s\n\t%s=%s\n\n",
 			"ifile_name", ifile_name,
 			"ofile_pt_x_name", ofile_pt_x_name,
 			"ofile_pt_y_name", ofile_pt_y_name,
@@ -498,10 +415,10 @@ int main(int argc, char **argv)
 			"ofile_sx_name", ofile_sx_name,
 			"ofile_sy_name", ofile_sy_name,
 			"ofile_sz_name", ofile_sz_name,
+			"pk_threshold", pk_threshold,
 			"speed_file", speed_file,
-			"ofile_tf_name", ofile_tf_name,
-			"peak_threshold", pk_threshold,
-			"ofile_training", ofile_training
+			"ofile_training", ofile_training,
+			"ofile_testing", ofile_testing
 	      );
 
 	/* open the input file */
@@ -563,8 +480,8 @@ int main(int argc, char **argv)
 
 	/* 
 	 * From selected thresholds, 
-	 * find indicies of peaks
-	 * find indicies of troughs
+	 * find indicies of peaks for seperate accelerations
+	 * find indicies of troughs for seperate accelerations
 	 */
 	P_i_ax = (float *) malloc(sizeof(float) * N_SAMPLES);
 	P_i_ay = (float *) malloc(sizeof(float) * N_SAMPLES);
@@ -653,9 +570,18 @@ int main(int argc, char **argv)
 			accel_z,
 			P_i_az, T_i_az);
 
-
+	/* Create the x-acceleration testing file for our neural network */
 	pts neural_pts;
-	create_training_file(fp, ofile_tf_name,
+	create_t_file(fp, ofile_training,
+			n_P_ax, n_T_ax,
+			t,
+			accel_x,
+			P_i_ax, T_i_ax,
+			speed_file,
+			0,
+			&neural_pts);
+
+	create_t_file(fp, ofile_testing,
 			n_P_ax, n_T_ax,
 			t,
 			accel_x,
@@ -663,12 +589,7 @@ int main(int argc, char **argv)
 			speed_file,
 			1,
 			&neural_pts);
-
-	
-	pts real_neural_pts;
-	populate_pts(&real_neural_pts, ofile_training);
-
-	test_neural_network(real_neural_pts);
+	// lOOK AT YOUR INPUT FILE; MISSING HEADER, PUT THAT IN
 
 	printf("extract_stride_data completed successfully. Exiting.\n");
 
